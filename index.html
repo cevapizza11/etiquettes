@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <style>
 :root {
   --navy: #0d2136;
@@ -695,6 +697,7 @@ main {
     </label>
     <input type="file" id="excelFile" accept=".xlsx,.xls" style="display:none" onchange="importExcel()">
     <button class="btn btn-navy" onclick="showAddManual()">+ Saisie manuelle</button>
+    <button class="btn btn-outline" onclick="clearAll()" style="color:#c0392b;border-color:#e0b0b0">🗑 Vider</button>
   </div>
 </header>
 
@@ -730,7 +733,10 @@ main {
     <span class="count-badge" id="countBadge">0 produits</span>
   </div>
 
-  <div id="emptyState" class="empty-state">
+  <div id="fbStatus" style="display:none;font-size:13px;color:var(--text-muted);margin-bottom:12px;display:flex;align-items:center;gap:8px">
+    <span id="fbDot" style="width:8px;height:8px;border-radius:50%;background:#ccc;display:inline-block"></span>
+    <span id="fbMsg">Connexion Firebase…</span>
+  </div>
     <div class="empty-icon">🫙</div>
     <h2>Aucun produit chargé</h2>
     <p>Importez votre fichier Excel pour afficher et imprimer vos étiquettes DLC.</p>
@@ -833,6 +839,69 @@ main {
 <div id="printArea"></div>
 
 <script>
+/* === FIREBASE === */
+const firebaseConfig = {
+  apiKey: "AIzaSyAn48FFLjXUuQBgmKhm2lJVDiTrU_tE3Uw",
+  authDomain: "etiquettes-96653.firebaseapp.com",
+  projectId: "etiquettes-96653",
+  storageBucket: "etiquettes-96653.firebasestorage.app",
+  messagingSenderId: "769824154965",
+  appId: "1:769824154965:web:e40d7af59a3c1b0bdc7bdc"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const DOC_REF = db.collection("etiquettes").doc("catalogue");
+
+function setFbStatus(ok, msg){
+  const dot = document.getElementById("fbDot");
+  const txt = document.getElementById("fbMsg");
+  const bar = document.getElementById("fbStatus");
+  bar.style.display = "flex";
+  dot.style.background = ok ? "#1a7a4a" : "#c0392b";
+  txt.textContent = msg;
+}
+
+async function loadFromFirestore(){
+  setFbStatus(null, "Chargement depuis Firebase…");
+  try {
+    const snap = await DOC_REF.get();
+    if(snap.exists && snap.data().produits){
+      allData = snap.data().produits;
+      buildCategoryFilter();
+      filterTable();
+      showGrid();
+      setFbStatus(true, allData.length + " produit(s) chargé(s) depuis Firebase");
+    } else {
+      setFbStatus(true, "Firebase connecté — aucun produit enregistré");
+    }
+  } catch(err){
+    setFbStatus(false, "Erreur Firebase : " + err.message);
+  }
+}
+
+async function saveToFirestore(){
+  setFbStatus(null, "Sauvegarde en cours…");
+  try {
+    await DOC_REF.set({ produits: allData });
+    setFbStatus(true, allData.length + " produit(s) sauvegardé(s) dans Firebase ✓");
+  } catch(err){
+    setFbStatus(false, "Erreur sauvegarde : " + err.message);
+  }
+}
+
+async function clearAll(){
+  if(!confirm("Vider toute la liste ? Cette action est irréversible.")) return;
+  allData = [];
+  filteredData = [];
+  await saveToFirestore();
+  document.getElementById("productGrid").innerHTML = "";
+  document.getElementById("productGrid").style.display = "none";
+  document.getElementById("toolbar").style.display = "none";
+  document.getElementById("emptyState").style.display = "";
+  document.getElementById("importGuide").style.display = "";
+}
+
+/* === DONNÉES === */
 let allData = [];
 let filteredData = [];
 let currentIndex = null;
@@ -846,14 +915,12 @@ function importExcel(){
     const wb = XLSX.read(data, {type:'array'});
     const ws = wb.Sheets[wb.SheetNames[0]];
     const json = XLSX.utils.sheet_to_json(ws);
-    if(json.length === 0){
-      alert("Fichier vide ou format incorrect.");
-      return;
-    }
+    if(json.length === 0){ alert("Fichier vide ou format incorrect."); return; }
     allData = allData.concat(json);
     buildCategoryFilter();
     filterTable();
     showGrid();
+    saveToFirestore();
   };
   reader.readAsArrayBuffer(file);
 }
@@ -963,21 +1030,14 @@ function renderGrid(){
 function openModal(filteredIndex){
   currentIndex = filteredIndex;
   const row = filteredData[filteredIndex];
-
-  // Sync employee
   const emp = document.getElementById("employeeSelect").value;
   document.getElementById("modalEmployee").value = emp;
-
-  // Sync quantity
   const qtyEl = document.getElementById(`qty-${filteredIndex}`);
   document.getElementById("modalQty").value = qtyEl ? qtyEl.value : "1";
-
-  // Default datetime = now
   const now = new Date();
   const pad = n => String(n).padStart(2,"0");
   const dtLocal = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
   document.getElementById("modalDatetime").value = dtLocal;
-
   updatePreview(row);
   document.getElementById("modalWrap").classList.add("open");
 }
@@ -988,7 +1048,6 @@ function updatePreview(row){
   const expiry = calculateExpiry(row["DLC"], row["Unité DLC"], prepDate);
   const employee = document.getElementById("modalEmployee").value;
   const allergens = row["Allergènes"] || "";
-
   const preview = document.getElementById("labelPreview");
   preview.innerHTML = `
     <div class="lp-brand">🐚 La Marmite Bleue</div>
@@ -1011,8 +1070,8 @@ function updatePreview(row){
   `;
 }
 
-// Re-update preview when employee or datetime changes
 document.addEventListener("DOMContentLoaded", () => {
+  loadFromFirestore();
   document.getElementById("modalEmployee").addEventListener("change", () => {
     if(currentIndex !== null) updatePreview(filteredData[currentIndex]);
   });
@@ -1047,10 +1106,8 @@ function executePrint(){
   const prepDate = dtVal ? new Date(dtVal) : new Date();
   const expiry = calculateExpiry(row["DLC"], row["Unité DLC"], prepDate);
   const allergens = row["Allergènes"] || "";
-
   const pa = document.getElementById("printArea");
   pa.innerHTML = "";
-
   for(let i = 0; i < qty; i++){
     const div = document.createElement("div");
     div.className = "print-label";
@@ -1082,7 +1139,6 @@ function executePrint(){
     `;
     pa.appendChild(div);
   }
-
   closeModal();
   setTimeout(() => window.print(), 100);
 }
@@ -1091,15 +1147,12 @@ function executePrint(){
 function showAddManual(){
   document.getElementById("manualWrap").classList.add("open");
 }
-
 function closeManual(){
   document.getElementById("manualWrap").classList.remove("open");
 }
-
 function closeManualOutside(e){
   if(e.target === document.getElementById("manualWrap")) closeManual();
 }
-
 function addManualProduct(){
   const product = document.getElementById("mProduct").value.trim();
   if(!product){ alert("Le champ Produit est obligatoire."); return; }
@@ -1116,11 +1169,14 @@ function addManualProduct(){
   buildCategoryFilter();
   filterTable();
   showGrid();
+  saveToFirestore();
   closeManual();
   ["mCat","mProduct","mFlavor","mDLC","mTemp","mAllergens"].forEach(id => {
     document.getElementById(id).value = "";
   });
 }
 </script>
+
+
 </body>
 </html>
