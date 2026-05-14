@@ -736,6 +736,7 @@ main {
   <div id="fbStatus" style="display:none;font-size:13px;color:var(--text-muted);margin-bottom:12px;align-items:center;gap:8px">
     <span id="fbDot" style="width:8px;height:8px;border-radius:50%;background:#ccc;display:inline-block"></span>
     <span id="fbMsg">Connexion Firebase…</span>
+    <span id="fbLastImport" style="margin-left:auto;font-size:12px;color:var(--text-muted)"></span>
   </div>
 
   <div id="emptyState" class="empty-state">
@@ -885,6 +886,9 @@ async function loadFromFirestore(){
       filterTable();
       showGrid();
       setFbStatus(true, allData.length + " produit(s) chargé(s) ✓");
+      if(snap.data().lastImport){
+        document.getElementById("fbLastImport").textContent = "📅 Dernier import : " + snap.data().lastImport;
+      }
     } else {
       setFbStatus(true, "Firebase connecté — aucun produit encore enregistré");
     }
@@ -896,9 +900,11 @@ async function loadFromFirestore(){
 async function saveToFirestore(){
   if(!firebaseReady) return;
   setFbStatus(null, "Sauvegarde…");
+  const lastImport = new Date().toLocaleString("fr-FR");
   try {
-    await DOC_REF.set({ produits: allData });
+    await DOC_REF.set({ produits: allData, lastImport });
     setFbStatus(true, allData.length + " produit(s) sauvegardé(s) ✓");
+    document.getElementById("fbLastImport").textContent = "📅 Dernier import : " + lastImport;
   } catch(err){
     setFbStatus(false, "Erreur sauvegarde : " + err.message);
   }
