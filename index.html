@@ -733,7 +733,7 @@ main {
     <span class="count-badge" id="countBadge">0 produits</span>
   </div>
 
-  <div id="fbStatus" style="display:none;font-size:13px;color:var(--text-muted);margin-bottom:12px;display:flex;align-items:center;gap:8px">
+  <div id="fbStatus" style="display:none;font-size:13px;color:var(--text-muted);margin-bottom:12px;align-items:center;gap:8px">
     <span id="fbDot" style="width:8px;height:8px;border-radius:50%;background:#ccc;display:inline-block"></span>
     <span id="fbMsg">Connexion Firebase…</span>
   </div>
@@ -848,42 +848,55 @@ const firebaseConfig = {
   messagingSenderId: "769824154965",
   appId: "1:769824154965:web:e40d7af59a3c1b0bdc7bdc"
 };
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const DOC_REF = db.collection("etiquettes").doc("catalogue");
+
+let db = null;
+let DOC_REF = null;
+let firebaseReady = false;
+
+try {
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+  DOC_REF = db.collection("etiquettes").doc("catalogue");
+  firebaseReady = true;
+} catch(e) {
+  console.warn("Firebase init échoué :", e);
+  setFbStatus(false, "Firebase non disponible — mode local uniquement");
+}
 
 function setFbStatus(ok, msg){
   const dot = document.getElementById("fbDot");
   const txt = document.getElementById("fbMsg");
   const bar = document.getElementById("fbStatus");
   bar.style.display = "flex";
-  dot.style.background = ok ? "#1a7a4a" : "#c0392b";
+  dot.style.background = ok === true ? "#1a7a4a" : ok === false ? "#c0392b" : "#f0a500";
   txt.textContent = msg;
 }
 
 async function loadFromFirestore(){
+  if(!firebaseReady){ setFbStatus(false, "Firebase non disponible — importez votre Excel"); return; }
   setFbStatus(null, "Chargement depuis Firebase…");
   try {
     const snap = await DOC_REF.get();
-    if(snap.exists && snap.data().produits){
+    if(snap.exists && snap.data().produits && snap.data().produits.length > 0){
       allData = snap.data().produits;
       buildCategoryFilter();
       filterTable();
       showGrid();
-      setFbStatus(true, allData.length + " produit(s) chargé(s) depuis Firebase");
+      setFbStatus(true, allData.length + " produit(s) chargé(s) ✓");
     } else {
-      setFbStatus(true, "Firebase connecté — aucun produit enregistré");
+      setFbStatus(true, "Firebase connecté — aucun produit encore enregistré");
     }
   } catch(err){
-    setFbStatus(false, "Erreur Firebase : " + err.message);
+    setFbStatus(false, "Erreur lecture : " + err.message);
   }
 }
 
 async function saveToFirestore(){
-  setFbStatus(null, "Sauvegarde en cours…");
+  if(!firebaseReady) return;
+  setFbStatus(null, "Sauvegarde…");
   try {
     await DOC_REF.set({ produits: allData });
-    setFbStatus(true, allData.length + " produit(s) sauvegardé(s) dans Firebase ✓");
+    setFbStatus(true, allData.length + " produit(s) sauvegardé(s) ✓");
   } catch(err){
     setFbStatus(false, "Erreur sauvegarde : " + err.message);
   }
@@ -893,12 +906,15 @@ async function clearAll(){
   if(!confirm("Vider toute la liste ? Cette action est irréversible.")) return;
   allData = [];
   filteredData = [];
-  await saveToFirestore();
+  if(firebaseReady){
+    try { await DOC_REF.set({ produits: [] }); } catch(e){}
+  }
   document.getElementById("productGrid").innerHTML = "";
   document.getElementById("productGrid").style.display = "none";
   document.getElementById("toolbar").style.display = "none";
   document.getElementById("emptyState").style.display = "";
   document.getElementById("importGuide").style.display = "";
+  setFbStatus(true, "Liste vidée");
 }
 
 /* === DONNÉES === */
