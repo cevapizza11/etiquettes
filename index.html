@@ -1,189 +1,230 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>La Marmite Bleue - HACCP</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Marmite Bleue - HACCP Impression</title>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+<style>
+body{
+    font-family: Arial, sans-serif;
+    margin:20px;
+    background:#f4f4f4;
+}
 
-    // Remplace avec tes infos Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyAn48FFLjXUuQBgmKhm2lJVDiTrU_tE3Uw",
-  authDomain: "etiquettes-96653.firebaseapp.com",
-  projectId: "etiquettes-96653",
-  storageBucket: "etiquettes-96653.firebasestorage.app",
-  messagingSenderId: "769824154965",
-  appId: "1:769824154965:web:e40d7af59a3c1b0bdc7bdc"
-    };
+.container{
+    background:white;
+    padding:20px;
+    border-radius:10px;
+}
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+h1{
+    text-align:center;
+}
 
-    window.saveToFirebase = async function(data) {
-      for (const row of data) {
-        await addDoc(collection(db, "produits"), row);
-      }
-      alert("Produits enregistrés dans Firebase");
-    };
+button{
+    padding:10px 15px;
+    margin:5px;
+    border:none;
+    border-radius:5px;
+    cursor:pointer;
+    font-size:14px;
+}
 
-    window.loadProducts = async function() {
-      const querySnapshot = await getDocs(collection(db, "produits"));
-      const tbody = document.getElementById("tableBody");
-      tbody.innerHTML = "";
+table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:20px;
+    background:white;
+}
 
-      querySnapshot.forEach((doc) => {
-        const row = doc.data();
-        addRowToTable(row);
-      });
-    };
-  </script>
+th, td{
+    border:1px solid #ccc;
+    padding:8px;
+}
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-      background: #f5f5f5;
+th{
+    background:#efefef;
+}
+
+.print-label{
+    width:58mm;
+    padding:10px;
+    font-size:14px;
+}
+
+.label-title{
+    font-size:18px;
+    font-weight:bold;
+    margin-bottom:10px;
+}
+
+@media print{
+    body *{
+        visibility:hidden;
     }
 
-    h1 {
-      text-align: center;
+    #printArea, #printArea *{
+        visibility:visible;
     }
 
-    .container {
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
+    #printArea{
+        position:absolute;
+        left:0;
+        top:0;
+        width:58mm;
     }
-
-    button {
-      padding: 12px;
-      margin: 10px 0;
-      cursor: pointer;
-      border: none;
-      border-radius: 5px;
-      font-size: 16px;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-      background: white;
-    }
-
-    th, td {
-      border: 1px solid #ccc;
-      padding: 8px;
-      text-align: left;
-    }
-
-    th {
-      background: #efefef;
-    }
-  </style>
+}
+</style>
 </head>
 
 <body>
 
 <div class="container">
-  <h1>La Marmite Bleue - HACCP</h1>
 
-  <input type="file" id="excelFile" accept=".xlsx,.xls">
+<h1>La Marmite Bleue - HACCP</h1>
 
-  <br>
+<input type="file" id="excelFile" accept=".xlsx,.xls">
+<button onclick="importExcel()">Importer Excel</button>
 
-  <button onclick="importExcel()">Importer Excel</button>
-  <button onclick="saveFirebase()">Sauvegarder Firebase</button>
-  <button onclick="loadProducts()">Charger Firebase</button>
+<table>
+<thead>
+<tr>
+<th>Catégorie</th>
+<th>Produit</th>
+<th>Sous-produit</th>
+<th>DLC</th>
+<th>Unité</th>
+<th>Température</th>
+<th>Action</th>
+</tr>
+</thead>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Catégorie</th>
-        <th>Produit</th>
-        <th>Sous-produit</th>
-        <th>Type</th>
-        <th>DLC</th>
-        <th>Unité</th>
-        <th>Température</th>
-        <th>Allergènes</th>
-        <th>Notes</th>
-      </tr>
-    </thead>
+<tbody id="tableBody"></tbody>
 
-    <tbody id="tableBody"></tbody>
-  </table>
+</table>
+
 </div>
 
+<div id="printArea"></div>
+
 <script>
-  let importedData = [];
 
-  function addRowToTable(row) {
-    const tbody = document.getElementById("tableBody");
+let importedData = [];
 
-    const tr = document.createElement("tr");
+function importExcel(){
 
-    tr.innerHTML = `
-      <td>${row["Catégorie"] || ""}</td>
-      <td>${row["Produit"] || ""}</td>
-      <td>${row["Sous-produit / Saveur"] || ""}</td>
-      <td>${row["Type étiquette"] || ""}</td>
-      <td>${row["DLC"] || ""}</td>
-      <td>${row["Unité DLC"] || ""}</td>
-      <td>${row["Température"] || ""}</td>
-      <td>${row["Allergènes"] || ""}</td>
-      <td>${row["Notes"] || ""}</td>
-    `;
-
-    tbody.appendChild(tr);
-  }
-
-  function importExcel() {
     const fileInput = document.getElementById("excelFile");
     const file = fileInput.files[0];
 
-    if (!file) {
-      alert("Choisis un fichier Excel");
-      return;
+    if(!file){
+        alert("Choisis un fichier Excel");
+        return;
     }
 
     const reader = new FileReader();
 
-    reader.onload = function(e) {
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
+    reader.onload = function(e){
 
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, {type:'array'});
 
-      importedData = XLSX.utils.sheet_to_json(worksheet);
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
 
-      const tbody = document.getElementById("tableBody");
-      tbody.innerHTML = "";
+        importedData = XLSX.utils.sheet_to_json(worksheet);
 
-      importedData.forEach(row => {
-        addRowToTable(row);
-      });
-
-      alert("Import Excel réussi");
+        renderTable();
     };
 
     reader.readAsArrayBuffer(file);
-  }
+}
 
-  async function saveFirebase() {
-    if (importedData.length === 0) {
-      alert("Importe un fichier avant");
-      return;
+function renderTable(){
+
+    const tbody = document.getElementById("tableBody");
+    tbody.innerHTML = "";
+
+    importedData.forEach((row, index) => {
+
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+            <td>${row["Catégorie"] || ""}</td>
+            <td>${row["Produit"] || ""}</td>
+            <td>${row["Sous-produit / Saveur"] || ""}</td>
+            <td>${row["DLC"] || ""}</td>
+            <td>${row["Unité DLC"] || ""}</td>
+            <td>${row["Température"] || ""}</td>
+            <td>
+                <button onclick="printLabel(${index})">
+                    Imprimer
+                </button>
+            </td>
+        `;
+
+        tbody.appendChild(tr);
+    });
+}
+
+function calculateExpiry(dlc, unit){
+
+    const now = new Date();
+
+    if(unit === "heures"){
+        now.setHours(now.getHours() + Number(dlc));
     }
 
-    await window.saveToFirebase(importedData);
-  }
+    if(unit === "jours"){
+        now.setDate(now.getDate() + Number(dlc));
+    }
+
+    return now.toLocaleString("fr-FR");
+}
+
+function printLabel(index){
+
+    const row = importedData[index];
+
+    const now = new Date().toLocaleString("fr-FR");
+
+    const expiry = calculateExpiry(
+        row["DLC"],
+        row["Unité DLC"]
+    );
+
+    const printArea = document.getElementById("printArea");
+
+    printArea.innerHTML = `
+        <div class="print-label">
+
+            <div class="label-title">
+                ${row["Produit"] || ""}
+            </div>
+
+            <p><strong>Saveur :</strong>
+            ${row["Sous-produit / Saveur"] || "-"}</p>
+
+            <p><strong>Préparé le :</strong><br>
+            ${now}</p>
+
+            <p><strong>À utiliser avant :</strong><br>
+            ${expiry}</p>
+
+            <p><strong>Température :</strong>
+            ${row["Température"] || ""}</p>
+
+            <p><strong>Allergènes :</strong><br>
+            ${row["Allergènes"] || "-"}</p>
+
+        </div>
+    `;
+
+    window.print();
+}
+
 </script>
 
 </body>
