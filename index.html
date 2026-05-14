@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>La Marmite Bleue - HACCP</title>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    // Remplace avec tes infos Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyAn48FFLjXUuQBgmKhm2lJVDiTrU_tE3Uw",
+  authDomain: "etiquettes-96653.firebaseapp.com",
+  projectId: "etiquettes-96653",
+  storageBucket: "etiquettes-96653.firebasestorage.app",
+  messagingSenderId: "769824154965",
+  appId: "1:769824154965:web:e40d7af59a3c1b0bdc7bdc"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    window.saveToFirebase = async function(data) {
+      for (const row of data) {
+        await addDoc(collection(db, "produits"), row);
+      }
+      alert("Produits enregistrés dans Firebase");
+    };
+
+    window.loadProducts = async function() {
+      const querySnapshot = await getDocs(collection(db, "produits"));
+      const tbody = document.getElementById("tableBody");
+      tbody.innerHTML = "";
+
+      querySnapshot.forEach((doc) => {
+        const row = doc.data();
+        addRowToTable(row);
+      });
+    };
+  </script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f5f5f5;
+    }
+
+    h1 {
+      text-align: center;
+    }
+
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+    }
+
+    button {
+      padding: 12px;
+      margin: 10px 0;
+      cursor: pointer;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: white;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+
+    th {
+      background: #efefef;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+  <h1>La Marmite Bleue - HACCP</h1>
+
+  <input type="file" id="excelFile" accept=".xlsx,.xls">
+
+  <br>
+
+  <button onclick="importExcel()">Importer Excel</button>
+  <button onclick="saveFirebase()">Sauvegarder Firebase</button>
+  <button onclick="loadProducts()">Charger Firebase</button>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Catégorie</th>
+        <th>Produit</th>
+        <th>Sous-produit</th>
+        <th>Type</th>
+        <th>DLC</th>
+        <th>Unité</th>
+        <th>Température</th>
+        <th>Allergènes</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+<script>
+  let importedData = [];
+
+  function addRowToTable(row) {
+    const tbody = document.getElementById("tableBody");
+
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td>${row["Catégorie"] || ""}</td>
+      <td>${row["Produit"] || ""}</td>
+      <td>${row["Sous-produit / Saveur"] || ""}</td>
+      <td>${row["Type étiquette"] || ""}</td>
+      <td>${row["DLC"] || ""}</td>
+      <td>${row["Unité DLC"] || ""}</td>
+      <td>${row["Température"] || ""}</td>
+      <td>${row["Allergènes"] || ""}</td>
+      <td>${row["Notes"] || ""}</td>
+    `;
+
+    tbody.appendChild(tr);
+  }
+
+  function importExcel() {
+    const fileInput = document.getElementById("excelFile");
+    const file = fileInput.files[0];
+
+    if (!file) {
+      alert("Choisis un fichier Excel");
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+
+      importedData = XLSX.utils.sheet_to_json(worksheet);
+
+      const tbody = document.getElementById("tableBody");
+      tbody.innerHTML = "";
+
+      importedData.forEach(row => {
+        addRowToTable(row);
+      });
+
+      alert("Import Excel réussi");
+    };
+
+    reader.readAsArrayBuffer(file);
+  }
+
+  async function saveFirebase() {
+    if (importedData.length === 0) {
+      alert("Importe un fichier avant");
+      return;
+    }
+
+    await window.saveToFirebase(importedData);
+  }
+</script>
+
+</body>
+</html>
