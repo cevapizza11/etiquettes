@@ -1033,8 +1033,9 @@ function closeModalOutside(e){
 function calculateExpiry(dlc, unit, baseDate){
   const d = baseDate ? new Date(baseDate) : new Date();
   const n = Number(dlc) || 0;
-  if(unit === "heures") d.setHours(d.getHours() + n);
-  else if(unit === "jours") d.setDate(d.getDate() + n);
+  const u = (unit || "").toString().trim().toLowerCase();
+  if(u.includes("heure")) d.setHours(d.getHours() + n);
+  else if(u.includes("jour")) d.setDate(d.getDate() + n);
   return d.toLocaleString("fr-FR");
 }
 
