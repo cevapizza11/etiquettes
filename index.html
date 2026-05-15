@@ -1656,7 +1656,7 @@ function printViaChrome(row, qty, employee, prepDate, expiry, allergens){
     const div = document.createElement("div");
     div.className = "print-label";
     div.innerHTML = `
-      <div class="pl-brand">La Marmite Bleue — HACCP</div>
+      <div class="pl-brand">La Marmite Bleue<br>HACCP</div>
       <div class="pl-product">${row["Produit"] || "—"}</div>
       ${row["Sous-produit / Saveur"] ? `<div class="pl-flavor">${row["Sous-produit / Saveur"]}</div>` : ""}
       <div class="pl-section">
