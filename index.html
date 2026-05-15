@@ -1778,15 +1778,13 @@ function pinKey(k){
 
 function validatePin(){
   if(pinBuffer === (appConfig.pin || "1234")){
+    const indexToEdit = pendingEditIndex;
     closePin();
-    openEdit(pendingEditIndex);
+    openEdit(indexToEdit);
   } else {
     document.getElementById("pinError").textContent = "Code incorrect, réessaie.";
     pinBuffer = "";
     updatePinDots();
-    const wrap = document.getElementById("pinWrap");
-    wrap.style.animation = "none";
-    wrap.offsetHeight;
   }
 }
 
