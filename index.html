@@ -689,6 +689,92 @@ main {
     color: #555;
   }
 }
+/* === EDIT / PIN === */
+.btn-edit {
+  background: none;
+  border: 1.5px solid var(--border);
+  color: var(--text-muted);
+  padding: 6px 10px;
+  border-radius: 7px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-edit:hover { border-color: var(--copper); color: var(--copper); background: #fff8f2; }
+
+.pin-dots {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin: 16px 0;
+}
+.pin-dot {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: background 0.15s;
+}
+.pin-dot.filled { background: var(--navy); }
+
+.pin-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.pin-key {
+  padding: 14px;
+  font-size: 18px;
+  font-weight: 600;
+  font-family: 'Syne', sans-serif;
+  background: var(--cream);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.1s;
+  text-align: center;
+}
+.pin-key:hover { background: var(--navy); color: var(--white); border-color: var(--navy); }
+.pin-key:active { transform: scale(0.95); }
+.pin-error {
+  text-align: center;
+  color: var(--danger);
+  font-size: 13px;
+  min-height: 20px;
+  margin-bottom: 4px;
+}
+
+.edit-field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+/* PIN dans settings */
+.pin-setting-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--cream);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+.pin-setting-row label { font-weight: 500; flex: 1; }
+.pin-setting-row input {
+  width: 100px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 16px;
+  text-align: center;
+  letter-spacing: 0.2em;
+  font-family: 'DM Sans', sans-serif;
+}
+.pin-setting-row input:focus { outline: none; border-color: var(--copper); }
+
 /* === SETTINGS MODAL === */
 .settings-tabs {
   display: flex;
@@ -970,6 +1056,75 @@ main {
   </div>
 </div>
 
+<!-- MODAL PIN -->
+<div class="modal-wrap" id="pinWrap" onclick="closePinOutside(event)">
+  <div class="modal" style="max-width:320px">
+    <div class="modal-header">
+      <h2>🔒 Code PIN requis</h2>
+      <button class="modal-close" onclick="closePin()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="text-align:center;font-size:13px;color:var(--text-muted);margin-bottom:4px">Saisis le code PIN pour modifier cette DLC</p>
+      <div class="pin-dots" id="pinDots">
+        <div class="pin-dot" id="dot0"></div>
+        <div class="pin-dot" id="dot1"></div>
+        <div class="pin-dot" id="dot2"></div>
+        <div class="pin-dot" id="dot3"></div>
+      </div>
+      <div class="pin-error" id="pinError"></div>
+      <div class="pin-pad">
+        <button class="pin-key" onclick="pinKey('1')">1</button>
+        <button class="pin-key" onclick="pinKey('2')">2</button>
+        <button class="pin-key" onclick="pinKey('3')">3</button>
+        <button class="pin-key" onclick="pinKey('4')">4</button>
+        <button class="pin-key" onclick="pinKey('5')">5</button>
+        <button class="pin-key" onclick="pinKey('6')">6</button>
+        <button class="pin-key" onclick="pinKey('7')">7</button>
+        <button class="pin-key" onclick="pinKey('8')">8</button>
+        <button class="pin-key" onclick="pinKey('9')">9</button>
+        <button class="pin-key" onclick="pinKey('⌫')" style="font-size:20px">⌫</button>
+        <button class="pin-key" onclick="pinKey('0')">0</button>
+        <button class="pin-key" onclick="pinKey('✓')" style="background:var(--navy);color:var(--white);border-color:var(--navy)">✓</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ÉDITION DLC -->
+<div class="modal-wrap" id="editWrap" onclick="closeEditOutside(event)">
+  <div class="modal" id="editModal">
+    <div class="modal-header">
+      <h2>✏️ Modifier la DLC</h2>
+      <button class="modal-close" onclick="closeEdit()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="editProductName" style="font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:var(--navy);margin-bottom:4px"></div>
+      <div id="editProductFlavor" style="font-size:13px;color:var(--copper);margin-bottom:16px"></div>
+      <div class="edit-field-grid">
+        <div class="modal-field">
+          <label>DLC (valeur)</label>
+          <input type="number" id="editDLC" min="1" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-family:'DM Sans',sans-serif">
+        </div>
+        <div class="modal-field">
+          <label>Unité</label>
+          <select id="editUnit" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif">
+            <option value="heures">heures</option>
+            <option value="jours">jours</option>
+          </select>
+        </div>
+        <div class="modal-field" style="grid-column:1/-1">
+          <label>Température de conservation</label>
+          <input type="text" id="editTemp" placeholder="ex: 0-4°C" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif">
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="closeEdit()">Annuler</button>
+        <button class="btn btn-primary" onclick="saveEdit()">💾 Enregistrer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL PARAMÈTRES -->
 <div class="modal-wrap" id="settingsWrap" onclick="closeSettingsOutside(event)">
   <div class="modal modal-wide" id="settingsModal">
@@ -982,6 +1137,7 @@ main {
       <div class="settings-tabs">
         <button class="settings-tab active" onclick="switchTab('employees')">👥 Employés</button>
         <button class="settings-tab" onclick="switchTab('printer')">🖨️ Imprimante</button>
+        <button class="settings-tab" onclick="switchTab('security')">🔒 Sécurité</button>
       </div>
 
       <!-- ONGLET EMPLOYÉS -->
@@ -1024,6 +1180,18 @@ main {
 
       </div>
 
+      <!-- ONGLET SÉCURITÉ -->
+      <div class="settings-panel" id="panel-security">
+        <div class="pin-setting-row">
+          <label>🔑 Code PIN modification DLC</label>
+          <input type="password" id="settingsPIN" maxlength="6" placeholder="••••">
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);line-height:1.6">
+          Ce code est demandé aux équipiers avant toute modification d'une DLC.<br>
+          4 à 6 chiffres recommandés. Seul toi dois le connaître.
+        </p>
+      </div>
+
       <div class="modal-actions" style="margin-top:20px">
         <button class="btn btn-outline" onclick="closeSettings()">Fermer</button>
         <button class="btn btn-primary" onclick="saveSettings()">💾 Enregistrer</button>
@@ -1054,7 +1222,8 @@ let firebaseReady = false;
 let appConfig = {
   employees: ["Chef cuisine", "Commis 1", "Commis 2", "Thomas"],
   printer: "ql800",
-  printerIP: ""
+  printerIP: "",
+  pin: "1234"
 };
 
 try {
@@ -1136,6 +1305,7 @@ async function loadConfig(){
       if(d.employees && d.employees.length) appConfig.employees = d.employees;
       if(d.printer) appConfig.printer = d.printer;
       if(d.printerIP) appConfig.printerIP = d.printerIP;
+      if(d.pin) appConfig.pin = d.pin;
     }
   } catch(e){ console.warn("Config non chargée:", e); }
   populateEmployeeSelects();
@@ -1172,6 +1342,7 @@ function openSettings(){
   document.getElementById("opt-ql810w").classList.toggle("selected", appConfig.printer === "ql810w");
   document.getElementById("ipRow").classList.toggle("visible", appConfig.printer === "ql810w");
   document.getElementById("printerIP").value = appConfig.printerIP || "";
+  document.getElementById("settingsPIN").value = appConfig.pin || "";
   document.getElementById("testResult").className = "test-result";
   switchTab("employees");
   document.getElementById("settingsWrap").classList.add("open");
@@ -1181,9 +1352,12 @@ function closeSettings(){ document.getElementById("settingsWrap").classList.remo
 function closeSettingsOutside(e){ if(e.target === document.getElementById("settingsWrap")) closeSettings(); }
 
 function switchTab(tab){
-  document.querySelectorAll(".settings-tab").forEach((t,i) => t.classList.toggle("active", i === (tab === "employees" ? 0 : 1)));
-  document.getElementById("panel-employees").classList.toggle("active", tab === "employees");
-  document.getElementById("panel-printer").classList.toggle("active", tab === "printer");
+  const tabs = ["employees","printer","security"];
+  document.querySelectorAll(".settings-tab").forEach((t,i) => t.classList.toggle("active", tabs[i] === tab));
+  tabs.forEach(t => {
+    const p = document.getElementById("panel-"+t);
+    if(p) p.classList.toggle("active", t === tab);
+  });
 }
 
 function renderEmployeeList(){
@@ -1251,6 +1425,8 @@ async function testPrinterConnection(){
 
 async function saveSettings(){
   appConfig.printerIP = document.getElementById("printerIP").value.trim();
+  const pinVal = document.getElementById("settingsPIN").value.trim();
+  if(pinVal) appConfig.pin = pinVal;
   await saveConfig();
   populateEmployeeSelects();
   closeSettings();
@@ -1376,6 +1552,7 @@ function renderGrid(){
         <button class="btn btn-print" style="margin-left:auto" onclick="openModal(${i})">
           🖨️ Étiquette
         </button>
+        <button class="btn-edit" onclick="requestEdit(${i})" title="Modifier la DLC">✏️</button>
       </div>
     `;
     grid.appendChild(card);
@@ -1555,7 +1732,107 @@ ${employee ? `^FO10,328^GB322,1,1^FS\n^CF0,20\n^FO10,336^FDPar: ${employee}^FS` 
   return zpl;
 }
 
-/* === SAISIE MANUELLE === */
+/* === PIN & ÉDITION DLC === */
+let pinBuffer = "";
+let pendingEditIndex = null;
+
+function requestEdit(filteredIndex){
+  pendingEditIndex = filteredIndex;
+  pinBuffer = "";
+  updatePinDots();
+  document.getElementById("pinError").textContent = "";
+  document.getElementById("pinWrap").classList.add("open");
+}
+
+function closePin(){
+  document.getElementById("pinWrap").classList.remove("open");
+  pinBuffer = "";
+  pendingEditIndex = null;
+}
+function closePinOutside(e){ if(e.target === document.getElementById("pinWrap")) closePin(); }
+
+function updatePinDots(){
+  const maxDots = Math.max(4, appConfig.pin ? appConfig.pin.length : 4);
+  for(let i = 0; i < 4; i++){
+    const dot = document.getElementById("dot"+i);
+    if(dot) dot.classList.toggle("filled", i < pinBuffer.length);
+  }
+}
+
+function pinKey(k){
+  if(k === "⌫"){
+    pinBuffer = pinBuffer.slice(0, -1);
+    updatePinDots();
+    document.getElementById("pinError").textContent = "";
+    return;
+  }
+  if(k === "✓"){
+    validatePin();
+    return;
+  }
+  if(pinBuffer.length >= 6) return;
+  pinBuffer += k;
+  updatePinDots();
+  if(pinBuffer.length === (appConfig.pin || "1234").length) validatePin();
+}
+
+function validatePin(){
+  if(pinBuffer === (appConfig.pin || "1234")){
+    closePin();
+    openEdit(pendingEditIndex);
+  } else {
+    document.getElementById("pinError").textContent = "Code incorrect, réessaie.";
+    pinBuffer = "";
+    updatePinDots();
+    const wrap = document.getElementById("pinWrap");
+    wrap.style.animation = "none";
+    wrap.offsetHeight;
+  }
+}
+
+function openEdit(filteredIndex){
+  const row = filteredData[filteredIndex];
+  pendingEditIndex = filteredIndex;
+  document.getElementById("editProductName").textContent = row["Produit"] || "—";
+  document.getElementById("editProductFlavor").textContent = row["Sous-produit / Saveur"] || "";
+  document.getElementById("editDLC").value = row["DLC"] || "";
+  const unit = (row["Unité DLC"] || "heures").toString().trim().toLowerCase();
+  document.getElementById("editUnit").value = unit.includes("jour") ? "jours" : "heures";
+  document.getElementById("editTemp").value = row["Température"] || "";
+  document.getElementById("editWrap").classList.add("open");
+}
+
+function closeEdit(){
+  document.getElementById("editWrap").classList.remove("open");
+  pendingEditIndex = null;
+}
+function closeEditOutside(e){ if(e.target === document.getElementById("editWrap")) closeEdit(); }
+
+async function saveEdit(){
+  const dlc = document.getElementById("editDLC").value;
+  const unit = document.getElementById("editUnit").value;
+  const temp = document.getElementById("editTemp").value.trim();
+  if(!dlc){ alert("La valeur DLC est obligatoire."); return; }
+
+  // Mettre à jour dans allData via filteredData
+  const row = filteredData[pendingEditIndex];
+  const allIndex = allData.findIndex(r =>
+    r["Produit"] === row["Produit"] &&
+    r["Sous-produit / Saveur"] === row["Sous-produit / Saveur"] &&
+    r["Catégorie"] === row["Catégorie"]
+  );
+  if(allIndex !== -1){
+    allData[allIndex]["DLC"] = dlc;
+    allData[allIndex]["Unité DLC"] = unit;
+    allData[allIndex]["Température"] = temp;
+  }
+
+  closeEdit();
+  filterTable();
+  await saveToFirestore();
+  setFbStatus(true, "DLC mise à jour et sauvegardée ✓");
+}
+
 function showAddManual(){
   document.getElementById("manualWrap").classList.add("open");
 }
