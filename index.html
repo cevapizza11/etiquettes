@@ -689,6 +689,135 @@ main {
     color: #555;
   }
 }
+/* === SETTINGS MODAL === */
+.settings-tabs {
+  display: flex;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 20px;
+}
+.settings-tab {
+  padding: 10px 20px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s;
+}
+.settings-tab.active {
+  color: var(--navy);
+  border-bottom-color: var(--copper);
+  font-weight: 600;
+}
+.settings-panel { display: none; }
+.settings-panel.active { display: block; }
+
+.employee-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+.employee-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--cream);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.employee-item .emp-name { flex: 1; }
+.btn-del {
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+.btn-del:hover { background: #fee2e2; }
+
+.add-employee-row {
+  display: flex;
+  gap: 8px;
+}
+.add-employee-row input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: 'DM Sans', sans-serif;
+}
+.add-employee-row input:focus { outline: none; border-color: var(--copper); }
+
+.printer-option {
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.printer-option:hover { border-color: var(--navy-mid); }
+.printer-option.selected { border-color: var(--copper); background: #fff8f2; }
+.printer-option-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.printer-option-header input[type=radio] { accent-color: var(--copper); width: 18px; height: 18px; }
+.printer-option-title { font-weight: 600; font-size: 15px; }
+.printer-option-desc { font-size: 12px; color: var(--text-muted); margin-left: 30px; }
+.printer-ip-row {
+  margin-top: 12px;
+  display: none;
+}
+.printer-ip-row.visible { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.printer-ip-row input {
+  flex: 1;
+  min-width: 160px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: 'DM Sans', sans-serif;
+}
+.printer-ip-row input:focus { outline: none; border-color: var(--copper); }
+.btn-test {
+  padding: 10px 14px;
+  background: var(--navy-mid);
+  color: var(--white);
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-test:hover { background: var(--navy-light); }
+.test-result {
+  font-size: 12px;
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  display: none;
+}
+.test-result.ok { background: #dcfce7; color: #166534; display: block; }
+.test-result.err { background: #fee2e2; color: #991b1b; display: block; }
+
+.modal-wide { max-width: 560px; }
 </style>
 </head>
 <body>
@@ -708,6 +837,7 @@ main {
     <input type="file" id="excelFile" accept=".xlsx,.xls" style="display:none" onchange="importExcel()">
     <button class="btn btn-navy" onclick="showAddManual()">+ Saisie manuelle</button>
     <button class="btn btn-outline" onclick="clearAll()" style="color:#c0392b;border-color:#e0b0b0">🗑 Vider</button>
+    <button class="btn btn-navy" onclick="openSettings()">⚙️ Paramètres</button>
   </div>
 </header>
 
@@ -735,10 +865,6 @@ main {
     </select>
     <select class="employee-select" id="employeeSelect">
       <option value="">— Préparé par —</option>
-      <option>Chef cuisine</option>
-      <option>Commis 1</option>
-      <option>Commis 2</option>
-      <option>Thomas</option>
     </select>
     <span class="count-badge" id="countBadge">0 produits</span>
   </div>
@@ -776,10 +902,6 @@ main {
           <label>Employé</label>
           <select id="modalEmployee">
             <option value="">— Préparé par —</option>
-            <option>Chef cuisine</option>
-            <option>Commis 1</option>
-            <option>Commis 2</option>
-            <option>Thomas</option>
           </select>
         </div>
         <div class="modal-field">
@@ -848,6 +970,68 @@ main {
   </div>
 </div>
 
+<!-- MODAL PARAMÈTRES -->
+<div class="modal-wrap" id="settingsWrap" onclick="closeSettingsOutside(event)">
+  <div class="modal modal-wide" id="settingsModal">
+    <div class="modal-header">
+      <h2>⚙️ Paramètres</h2>
+      <button class="modal-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="settings-tabs">
+        <button class="settings-tab active" onclick="switchTab('employees')">👥 Employés</button>
+        <button class="settings-tab" onclick="switchTab('printer')">🖨️ Imprimante</button>
+      </div>
+
+      <!-- ONGLET EMPLOYÉS -->
+      <div class="settings-panel active" id="panel-employees">
+        <div class="employee-list" id="employeeList"></div>
+        <div class="add-employee-row">
+          <input type="text" id="newEmployeeName" placeholder="Nom de l'employé…" onkeydown="if(event.key==='Enter') addEmployee()">
+          <button class="btn btn-primary" onclick="addEmployee()">+ Ajouter</button>
+        </div>
+      </div>
+
+      <!-- ONGLET IMPRIMANTE -->
+      <div class="settings-panel" id="panel-printer">
+
+        <div class="printer-option" id="opt-ql800" onclick="selectPrinter('ql800')">
+          <div class="printer-option-header">
+            <input type="radio" name="printerType" id="radio-ql800" value="ql800">
+            <span class="printer-option-title">Brother QL-800 — USB</span>
+          </div>
+          <div class="printer-option-desc">Impression via Chrome (configuration actuelle). Le PC doit être branché à l'imprimante.</div>
+        </div>
+
+        <div class="printer-option" id="opt-ql810w" onclick="selectPrinter('ql810w')">
+          <div class="printer-option-header">
+            <input type="radio" name="printerType" id="radio-ql810w" value="ql810w">
+            <span class="printer-option-title">Brother QL-810W — WiFi</span>
+          </div>
+          <div class="printer-option-desc">Impression directe via réseau. Nécessite Zebra BrowserPrint installé sur ce poste.</div>
+          <div class="printer-ip-row" id="ipRow">
+            <input type="text" id="printerIP" placeholder="Adresse IP (ex: 192.168.1.45)" oninput="saveIPLive()">
+            <button class="btn-test" onclick="testPrinterConnection()">🔌 Tester</button>
+          </div>
+          <div class="test-result" id="testResult"></div>
+        </div>
+
+        <div style="font-size:12px;color:var(--text-muted);margin-top:8px;line-height:1.6">
+          💡 Pour le mode WiFi, installe <strong>Zebra BrowserPrint</strong> sur ce poste :<br>
+          <a href="https://www.zebra.com/fr/fr/software/browser-print.html" target="_blank" style="color:var(--copper)">zebra.com → BrowserPrint</a>
+        </div>
+
+      </div>
+
+      <div class="modal-actions" style="margin-top:20px">
+        <button class="btn btn-outline" onclick="closeSettings()">Fermer</button>
+        <button class="btn btn-primary" onclick="saveSettings()">💾 Enregistrer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ZONE D'IMPRESSION -->
 <div id="printArea"></div>
 
@@ -864,12 +1048,20 @@ const firebaseConfig = {
 
 let db = null;
 let DOC_REF = null;
+let CONFIG_REF = null;
 let firebaseReady = false;
+
+let appConfig = {
+  employees: ["Chef cuisine", "Commis 1", "Commis 2", "Thomas"],
+  printer: "ql800",
+  printerIP: ""
+};
 
 try {
   firebase.initializeApp(firebaseConfig);
   db = firebase.firestore();
   DOC_REF = db.collection("etiquettes").doc("catalogue");
+  CONFIG_REF = db.collection("etiquettes").doc("config");
   firebaseReady = true;
 } catch(e) {
   console.warn("Firebase init échoué :", e);
@@ -935,7 +1127,136 @@ async function clearAll(){
   setFbStatus(true, "Liste vidée");
 }
 
-/* === DONNÉES === */
+async function loadConfig(){
+  if(!firebaseReady) { populateEmployeeSelects(); return; }
+  try {
+    const snap = await CONFIG_REF.get();
+    if(snap.exists){
+      const d = snap.data();
+      if(d.employees && d.employees.length) appConfig.employees = d.employees;
+      if(d.printer) appConfig.printer = d.printer;
+      if(d.printerIP) appConfig.printerIP = d.printerIP;
+    }
+  } catch(e){ console.warn("Config non chargée:", e); }
+  populateEmployeeSelects();
+}
+
+async function saveConfig(){
+  if(!firebaseReady) return;
+  try {
+    await CONFIG_REF.set(appConfig);
+  } catch(e){ console.warn("Config non sauvegardée:", e); }
+}
+
+function populateEmployeeSelects(){
+  const selects = ["employeeSelect","modalEmployee"];
+  selects.forEach(id => {
+    const sel = document.getElementById(id);
+    if(!sel) return;
+    const current = sel.value;
+    sel.innerHTML = '<option value="">— Préparé par —</option>';
+    appConfig.employees.forEach(emp => {
+      const opt = document.createElement("option");
+      opt.value = emp; opt.textContent = emp;
+      sel.appendChild(opt);
+    });
+    if(current) sel.value = current;
+  });
+}
+
+/* === SETTINGS UI === */
+function openSettings(){
+  renderEmployeeList();
+  document.getElementById("radio-" + appConfig.printer).checked = true;
+  document.getElementById("opt-ql800").classList.toggle("selected", appConfig.printer === "ql800");
+  document.getElementById("opt-ql810w").classList.toggle("selected", appConfig.printer === "ql810w");
+  document.getElementById("ipRow").classList.toggle("visible", appConfig.printer === "ql810w");
+  document.getElementById("printerIP").value = appConfig.printerIP || "";
+  document.getElementById("testResult").className = "test-result";
+  switchTab("employees");
+  document.getElementById("settingsWrap").classList.add("open");
+}
+
+function closeSettings(){ document.getElementById("settingsWrap").classList.remove("open"); }
+function closeSettingsOutside(e){ if(e.target === document.getElementById("settingsWrap")) closeSettings(); }
+
+function switchTab(tab){
+  document.querySelectorAll(".settings-tab").forEach((t,i) => t.classList.toggle("active", i === (tab === "employees" ? 0 : 1)));
+  document.getElementById("panel-employees").classList.toggle("active", tab === "employees");
+  document.getElementById("panel-printer").classList.toggle("active", tab === "printer");
+}
+
+function renderEmployeeList(){
+  const list = document.getElementById("employeeList");
+  list.innerHTML = "";
+  if(!appConfig.employees.length){
+    list.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px">Aucun employé enregistré</div>';
+    return;
+  }
+  appConfig.employees.forEach((emp, i) => {
+    const div = document.createElement("div");
+    div.className = "employee-item";
+    div.innerHTML = `<span class="emp-name">👤 ${emp}</span><button class="btn-del" onclick="removeEmployee(${i})" title="Supprimer">✕</button>`;
+    list.appendChild(div);
+  });
+}
+
+function addEmployee(){
+  const input = document.getElementById("newEmployeeName");
+  const name = input.value.trim();
+  if(!name) return;
+  if(appConfig.employees.includes(name)){ alert("Cet employé existe déjà."); return; }
+  appConfig.employees.push(name);
+  input.value = "";
+  renderEmployeeList();
+  populateEmployeeSelects();
+}
+
+function removeEmployee(index){
+  appConfig.employees.splice(index, 1);
+  renderEmployeeList();
+  populateEmployeeSelects();
+}
+
+function selectPrinter(type){
+  appConfig.printer = type;
+  document.getElementById("radio-ql800").checked = type === "ql800";
+  document.getElementById("radio-ql810w").checked = type === "ql810w";
+  document.getElementById("opt-ql800").classList.toggle("selected", type === "ql800");
+  document.getElementById("opt-ql810w").classList.toggle("selected", type === "ql810w");
+  document.getElementById("ipRow").classList.toggle("visible", type === "ql810w");
+  document.getElementById("testResult").className = "test-result";
+}
+
+function saveIPLive(){
+  appConfig.printerIP = document.getElementById("printerIP").value.trim();
+}
+
+async function testPrinterConnection(){
+  const ip = document.getElementById("printerIP").value.trim();
+  const res = document.getElementById("testResult");
+  if(!ip){ res.className="test-result err"; res.textContent="Saisis une adresse IP d'abord."; return; }
+  res.className="test-result"; res.textContent="Test en cours…"; res.style.display="block";
+  try {
+    const response = await fetch(`https://localhost:9101/available`, { signal: AbortSignal.timeout(3000) });
+    if(response.ok){
+      res.className="test-result ok"; res.textContent="✓ BrowserPrint détecté — imprimante accessible";
+    } else {
+      res.className="test-result err"; res.textContent="BrowserPrint répond mais erreur " + response.status;
+    }
+  } catch(e){
+    res.className="test-result err"; res.textContent="✗ BrowserPrint non détecté — vérifie qu'il est lancé sur ce poste";
+  }
+}
+
+async function saveSettings(){
+  appConfig.printerIP = document.getElementById("printerIP").value.trim();
+  await saveConfig();
+  populateEmployeeSelects();
+  closeSettings();
+  setFbStatus(true, "Paramètres sauvegardés ✓");
+}
+
 let allData = [];
 let filteredData = [];
 let currentIndex = null;
@@ -1106,6 +1427,7 @@ function updatePreview(row){
 
 document.addEventListener("DOMContentLoaded", () => {
   loadFromFirestore();
+  loadConfig();
   document.getElementById("modalEmployee").addEventListener("change", () => {
     if(currentIndex !== null) updatePreview(filteredData[currentIndex]);
   });
@@ -1140,6 +1462,17 @@ function executePrint(){
   const prepDate = dtVal ? new Date(dtVal) : new Date();
   const expiry = calculateExpiry(row["DLC"], row["Unité DLC"], prepDate);
   const allergens = row["Allergènes"] || "";
+
+  closeModal();
+
+  if(appConfig.printer === "ql810w"){
+    printViaWifi(row, qty, employee, prepDate, expiry, allergens);
+  } else {
+    printViaChrome(row, qty, employee, prepDate, expiry, allergens);
+  }
+}
+
+function printViaChrome(row, qty, employee, prepDate, expiry, allergens){
   const pa = document.getElementById("printArea");
   pa.innerHTML = "";
   for(let i = 0; i < qty; i++){
@@ -1161,16 +1494,65 @@ function executePrint(){
         <div class="pl-key">Température de conservation</div>
         <div class="pl-val">${row["Température"] || "—"}</div>
       </div>
-      ${allergens ? `
-      <div class="pl-allergens">
-        <span class="pl-allergen-label">⚠ Allergènes :</span> ${allergens}
-      </div>` : ""}
+      ${allergens ? `<div class="pl-allergens"><span class="pl-allergen-label">⚠ Allergènes :</span> ${allergens}</div>` : ""}
       ${employee ? `<div class="pl-employee">Préparé par : ${employee}</div>` : ""}
     `;
     pa.appendChild(div);
   }
-  closeModal();
   setTimeout(() => window.print(), 100);
+}
+
+async function printViaWifi(row, qty, employee, prepDate, expiry, allergens){
+  if(!appConfig.printerIP){ alert("Configure l'adresse IP dans Paramètres → Imprimante."); return; }
+  const zpl = generateZPL(row, qty, employee, prepDate, expiry, allergens);
+  try {
+    const res = await fetch("https://localhost:9101/write", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ device: { connection: "network", uid: appConfig.printerIP + ":9100" }, data: zpl })
+    });
+    if(res.ok){ setFbStatus(true, "✓ Étiquette(s) envoyée(s) à l'imprimante"); }
+    else { alert("Erreur impression WiFi : " + res.status + ". Vérifie BrowserPrint."); }
+  } catch(e){
+    alert("Impossible de contacter BrowserPrint.\nVérifie qu'il est lancé sur ce poste.\n\n" + e.message);
+  }
+}
+
+function generateZPL(row, qty, employee, prepDate, expiry, allergens){
+  const prod = (row["Produit"] || "—").toUpperCase();
+  const flavor = row["Sous-produit / Saveur"] || "";
+  const temp = row["Température"] || "—";
+  const prepStr = prepDate.toLocaleString("fr-FR");
+  let zpl = "";
+  for(let i = 0; i < qty; i++){
+    zpl += `
+^XA
+^PW342
+^LL1070
+^CF0,22
+^FO10,10^FDLa Marmite Bleue - HACCP^FS
+^FO10,36^GB322,2,2^FS
+^CF0,38
+^FO10,44^FD${prod}^FS
+${flavor ? `^CF0,26\n^FO10,90^FD${flavor}^FS` : ""}
+^FO10,125^GB322,1,1^FS
+^CF0,20
+^FO10,132^FDPrepare le:^FS
+^CF0,24
+^FO10,156^FD${prepStr}^FS
+^FO10,188^GB322,2,2^FS
+^CF0,20
+^FO10,196^FDA utiliser avant:^FS
+^CF0,30
+^FO10,222^FD${expiry}^FS
+^FO10,262^GB322,2,2^FS
+^CF0,22
+^FO10,270^FDTemp: ${temp}^FS
+${allergens ? `^CF0,20\n^FO10,298^FDAllergenes: ${allergens}^FS` : ""}
+${employee ? `^FO10,328^GB322,1,1^FS\n^CF0,20\n^FO10,336^FDPar: ${employee}^FS` : ""}
+^XZ`;
+  }
+  return zpl;
 }
 
 /* === SAISIE MANUELLE === */
