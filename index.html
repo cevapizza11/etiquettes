@@ -1173,6 +1173,47 @@ main {
           <div class="test-result" id="testResult"></div>
         </div>
 
+        <!-- SÉLECTEUR ROULEAU -->
+        <div style="margin-top:16px;padding-top:16px;border-top:1.5px solid var(--border)">
+          <div style="font-weight:600;font-size:14px;margin-bottom:10px">🗞️ Rouleau installé</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer" id="roll-dk1201-label">
+              <input type="radio" name="rollType" id="roll-dk1201" value="dk1201" onchange="selectRoll('dk1201')" style="accent-color:var(--copper)">
+              <div>
+                <div style="font-weight:600;font-size:14px">DK-1201 — 29mm × 90mm prédécoupé</div>
+                <div style="font-size:12px;color:var(--text-muted)">400 étiquettes/rouleau — format actuel</div>
+              </div>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer" id="roll-dk2210-label">
+              <input type="radio" name="rollType" id="roll-dk2210" value="dk2210" onchange="selectRoll('dk2210')" style="accent-color:var(--copper)">
+              <div>
+                <div style="font-weight:600;font-size:14px">DK-2210 — 29mm continu</div>
+                <div style="font-size:12px;color:var(--text-muted)">30m/rouleau — longueur libre (coupeur auto)</div>
+              </div>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer" id="roll-dk2205-label">
+              <input type="radio" name="rollType" id="roll-dk2205" value="dk2205" onchange="selectRoll('dk2205')" style="accent-color:var(--copper)">
+              <div>
+                <div style="font-weight:600;font-size:14px">DK-2205 — 62mm continu</div>
+                <div style="font-size:12px;color:var(--text-muted)">30m/rouleau — large, très lisible</div>
+              </div>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer" id="roll-dk2251-label">
+              <input type="radio" name="rollType" id="roll-dk2251" value="dk2251" onchange="selectRoll('dk2251')" style="accent-color:var(--copper)">
+              <div>
+                <div style="font-weight:600;font-size:14px">DK-22251 — 62mm continu noir + rouge</div>
+                <div style="font-size:12px;color:var(--text-muted)">15m/rouleau — date limite en rouge</div>
+              </div>
+            </label>
+          </div>
+          <!-- Longueur pour rouleaux continus -->
+          <div id="rollLengthRow" style="display:none;margin-top:12px;align-items:center;gap:10px">
+            <label style="font-size:13px;font-weight:500;white-space:nowrap">Longueur étiquette :</label>
+            <input type="number" id="rollLength" value="60" min="30" max="200" style="width:80px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;text-align:center" oninput="saveRollLengthLive()">
+            <span style="font-size:13px;color:var(--text-muted)">mm</span>
+          </div>
+        </div>
+
         <div style="font-size:12px;color:var(--text-muted);margin-top:8px;line-height:1.6">
           💡 L'IP à saisir est celle du <strong>PC sur lequel tourne start.bat</strong>, pas l'IP de l'imprimante.<br>
           Sur ce PC → <code>ipconfig</code> dans cmd pour trouver son IP.
@@ -1223,7 +1264,9 @@ let appConfig = {
   employees: ["Chef cuisine", "Commis 1", "Commis 2", "Thomas"],
   printer: "ql800",
   printerIP: "",
-  pin: "1234"
+  pin: "1234",
+  roll: "dk1201",
+  rollLength: 60
 };
 
 try {
@@ -1306,6 +1349,8 @@ async function loadConfig(){
       if(d.printer) appConfig.printer = d.printer;
       if(d.printerIP) appConfig.printerIP = d.printerIP;
       if(d.pin) appConfig.pin = d.pin;
+      if(d.roll) appConfig.roll = d.roll;
+      if(d.rollLength) appConfig.rollLength = d.rollLength;
     }
   } catch(e){ console.warn("Config non chargée:", e); }
   populateEmployeeSelects();
@@ -1343,6 +1388,14 @@ function openSettings(){
   document.getElementById("ipRow").classList.toggle("visible", appConfig.printer === "ql810w");
   document.getElementById("printerIP").value = appConfig.printerIP || "";
   document.getElementById("settingsPIN").value = appConfig.pin || "";
+  // Rouleau
+  const rollId = "roll-" + (appConfig.roll || "dk1201");
+  const rollEl = document.getElementById(rollId);
+  if(rollEl) rollEl.checked = true;
+  updateRollLabels(appConfig.roll || "dk1201");
+  document.getElementById("rollLength").value = appConfig.rollLength || 60;
+  const isContinuous = ["dk2210","dk2205","dk2251"].includes(appConfig.roll);
+  document.getElementById("rollLengthRow").style.display = isContinuous ? "flex" : "none";
   document.getElementById("testResult").className = "test-result";
   switchTab("employees");
   document.getElementById("settingsWrap").classList.add("open");
@@ -1423,8 +1476,27 @@ async function testPrinterConnection(){
   }
 }
 
+function selectRoll(type){
+  appConfig.roll = type;
+  updateRollLabels(type);
+  const isContinuous = ["dk2210","dk2205","dk2251"].includes(type);
+  document.getElementById("rollLengthRow").style.display = isContinuous ? "flex" : "none";
+}
+
+function updateRollLabels(type){
+  ["dk1201","dk2210","dk2205","dk2251"].forEach(r => {
+    const el = document.getElementById("roll-"+r+"-label");
+    if(el) el.style.borderColor = r === type ? "var(--copper)" : "var(--border)";
+  });
+}
+
+function saveRollLengthLive(){
+  appConfig.rollLength = parseInt(document.getElementById("rollLength").value) || 60;
+}
+
 async function saveSettings(){
   appConfig.printerIP = document.getElementById("printerIP").value.trim();
+  appConfig.rollLength = parseInt(document.getElementById("rollLength").value) || 60;
   const pinVal = document.getElementById("settingsPIN").value.trim();
   if(pinVal) appConfig.pin = pinVal;
   await saveConfig();
@@ -1700,42 +1772,67 @@ async function printViaWifi(row, qty, employee, prepDate, expiry, allergens){
 }
 
 function generateZPL(row, qty, employee, prepDate, expiry, allergens){
-  // DK-1201 : 29mm x 90.3mm à 203dpi
-  // 29mm = 232 points | 90.3mm = 720 points
-  const prod    = (row["Produit"] || "—").substring(0, 18).toUpperCase();
-  const flavor  = (row["Sous-produit / Saveur"] || "").substring(0, 22);
-  const temp    = (row["Température"] || "—").substring(0, 20);
+  const roll = appConfig.roll || "dk1201";
+
+  // Dimensions selon le rouleau (203 dpi : 1mm = 8 points)
+  const configs = {
+    dk1201:  { pw: 232, ll: 720, wide: false },
+    dk2210:  { pw: 232, ll: (appConfig.rollLength || 60) * 8, wide: false },
+    dk2205:  { pw: 496, ll: (appConfig.rollLength || 60) * 8, wide: true  },
+    dk2251:  { pw: 496, ll: (appConfig.rollLength || 60) * 8, wide: true  }
+  };
+  const cfg = configs[roll] || configs.dk1201;
+  const pw = cfg.pw;
+  const ll = cfg.ll;
+  const red = roll === "dk2251";
+
+  const prod    = (row["Produit"] || "—").substring(0, cfg.wide ? 30 : 18).toUpperCase();
+  const flavor  = (row["Sous-produit / Saveur"] || "").substring(0, cfg.wide ? 40 : 22);
+  const temp    = (row["Température"] || "—").substring(0, 24);
   const prepStr = prepDate.toLocaleString("fr-FR");
-  const allerg  = (allergens || "").substring(0, 40);
-  const emp     = (employee || "").substring(0, 20);
+  const allerg  = (allergens || "").substring(0, cfg.wide ? 60 : 40);
+  const emp     = (employee || "").substring(0, 24);
+
+  // Tailles de polices selon largeur
+  const f1 = cfg.wide ? 22 : 18; // entête
+  const f2 = cfg.wide ? 34 : 26; // produit
+  const f3 = cfg.wide ? 22 : 18; // saveur
+  const f4 = cfg.wide ? 20 : 16; // labels
+  const f5 = cfg.wide ? 28 : 20; // préparé le valeur
+  const f6 = cfg.wide ? 20 : 16; // à utiliser avant label
+  const f7 = cfg.wide ? 34 : 24; // date limite valeur
+  const f8 = cfg.wide ? 20 : 16; // temp/allergènes/employé
+
+  // Couleur date limite : rouge si DK-22251
+  const colorExp = red ? "^CF0,${f7}\n^FR" : "";
 
   let zpl = "";
   for(let i = 0; i < qty; i++){
     zpl += `^XA
 ^PON
-^PW232
-^LL720
+^PW${pw}
+^LL${ll}
 ^LH0,0
 
-^FO8,10^A0N,18,18^FDLa Marmite Bleue^FS
-^FO8,30^A0N,14,14^FDHACCP^FS
-^FO8,48^GB216,2,2^FS
+^FO8,10^A0N,${f1},${f1}^FDLa Marmite Bleue^FS
+^FO8,${10+f1+2}^A0N,${Math.round(f1*0.8)},${Math.round(f1*0.8)}^FDHACCP^FS
+^FO8,${10+f1*2+6}^GB${pw-16},2,2^FS
 
-^FO8,56^A0N,26,26^FD${prod}^FS
-${flavor ? `^FO8,88^A0N,20,20^FD${flavor}^FS` : ""}
+^FO8,${10+f1*2+14}^A0N,${f2},${f2}^FD${prod}^FS
+${flavor ? `^FO8,${10+f1*2+14+f2+4}^A0N,${f3},${f3}^FD${flavor}^FS` : ""}
 
-^FO8,118^GB216,1,1^FS
-^FO8,124^A0N,16,16^FDPrepare le:^FS
-^FO8,142^A0N,18,18^FD${prepStr}^FS
+^FO8,${10+f1*2+14+f2+(flavor?f3+8:4)+4}^GB${pw-16},1,1^FS
+^FO8,${10+f1*2+14+f2+(flavor?f3+8:4)+10}^A0N,${f4},${f4}^FDPrepare le:^FS
+^FO8,${10+f1*2+14+f2+(flavor?f3+8:4)+10+f4+2}^A0N,${f5},${f5}^FD${prepStr}^FS
 
-^FO8,168^GB216,3,3^FS
-^FO8,174^A0N,16,16^FDA utiliser avant:^FS
-^FO8,194^A0N,24,24^FD${expiry}^FS
-^FO8,224^GB216,3,3^FS
+^FO8,${10+f1*2+14+f2+(flavor?f3+8:4)+10+f4+f5+16}^GB${pw-16},3,3^FS
+^FO8,${10+f1*2+14+f2+(flavor?f3+8:4)+10+f4+f5+22}^A0N,${f6},${f6}^FDA utiliser avant:^FS
+^FO8,${10+f1*2+14+f2+(flavor?f3+8:4)+10+f4+f5+f6+26}^A0N,${f7},${f7}${red?"^FR":""}^FD${expiry}^FS
+^FO8,${10+f1*2+14+f2+(flavor?f3+8:4)+10+f4+f5+f6+f7+30}^GB${pw-16},3,3^FS
 
-^FO8,232^A0N,16,16^FDTemp: ${temp}^FS
-${allerg ? `^FO8,254^GB216,1,1^FS\n^FO8,260^A0N,14,14^FDAllergenes:^FS\n^FO8,276^A0N,16,16^FD${allerg}^FS` : ""}
-${emp ? `^FO8,660^GB216,1,1^FS\n^FO8,668^A0N,16,16^FDPar: ${emp}^FS` : ""}
+^FO8,${10+f1*2+14+f2+(flavor?f3+8:4)+10+f4+f5+f6+f7+38}^A0N,${f8},${f8}^FDTemp: ${temp}^FS
+${allerg ? `^FO8,${10+f1*2+14+f2+(flavor?f3+8:4)+10+f4+f5+f6+f7+38+f8+6}^A0N,${f8},${f8}^FDAllergenes: ${allerg}^FS` : ""}
+${emp ? `^FO8,${ll-f8-8}^GB${pw-16},1,1^FS\n^FO8,${ll-f8-2}^A0N,${f8},${f8}^FDPar: ${emp}^FS` : ""}
 
 ^XZ
 `;
