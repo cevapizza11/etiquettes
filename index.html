@@ -1165,17 +1165,17 @@ main {
             <input type="radio" name="printerType" id="radio-ql810w" value="ql810w">
             <span class="printer-option-title">Brother QL-810W — WiFi</span>
           </div>
-          <div class="printer-option-desc">Impression directe via réseau. Nécessite Zebra BrowserPrint installé sur ce poste.</div>
+          <div class="printer-option-desc">Impression directe via réseau. Nécessite le serveur <strong>start.bat</strong> lancé sur le PC connecté à l'imprimante.</div>
           <div class="printer-ip-row" id="ipRow">
-            <input type="text" id="printerIP" placeholder="Adresse IP (ex: 192.168.1.45)" oninput="saveIPLive()">
+            <input type="text" id="printerIP" placeholder="IP du PC serveur (ex: 192.168.1.66)" oninput="saveIPLive()">
             <button class="btn-test" onclick="testPrinterConnection()">🔌 Tester</button>
           </div>
           <div class="test-result" id="testResult"></div>
         </div>
 
         <div style="font-size:12px;color:var(--text-muted);margin-top:8px;line-height:1.6">
-          💡 Pour le mode WiFi, installe <strong>Zebra BrowserPrint</strong> sur ce poste :<br>
-          <a href="https://www.zebra.com/fr/fr/software/browser-print.html" target="_blank" style="color:var(--copper)">zebra.com → BrowserPrint</a>
+          💡 L'IP à saisir est celle du <strong>PC sur lequel tourne start.bat</strong>, pas l'IP de l'imprimante.<br>
+          Sur ce PC → <code>ipconfig</code> dans cmd pour trouver son IP.
         </div>
 
       </div>
@@ -1409,17 +1409,17 @@ function saveIPLive(){
 async function testPrinterConnection(){
   const ip = document.getElementById("printerIP").value.trim();
   const res = document.getElementById("testResult");
-  if(!ip){ res.className="test-result err"; res.textContent="Saisis une adresse IP d'abord."; return; }
+  if(!ip){ res.className="test-result err"; res.textContent="Saisis l'IP du PC serveur d'abord."; return; }
   res.className="test-result"; res.textContent="Test en cours…"; res.style.display="block";
   try {
-    const response = await fetch(`https://localhost:9101/available`, { signal: AbortSignal.timeout(3000) });
+    const response = await fetch(`http://${ip}:3000/ping`, { signal: AbortSignal.timeout(3000) });
     if(response.ok){
-      res.className="test-result ok"; res.textContent="✓ BrowserPrint détecté — imprimante accessible";
+      res.className="test-result ok"; res.textContent="✓ Serveur détecté — prêt à imprimer !";
     } else {
-      res.className="test-result err"; res.textContent="BrowserPrint répond mais erreur " + response.status;
+      res.className="test-result err"; res.textContent="Serveur répond mais erreur " + response.status;
     }
   } catch(e){
-    res.className="test-result err"; res.textContent="✗ BrowserPrint non détecté — vérifie qu'il est lancé sur ce poste";
+    res.className="test-result err"; res.textContent="✗ Serveur non détecté — vérifie que start.bat est lancé";
   }
 }
 
@@ -1680,18 +1680,22 @@ function printViaChrome(row, qty, employee, prepDate, expiry, allergens){
 }
 
 async function printViaWifi(row, qty, employee, prepDate, expiry, allergens){
-  if(!appConfig.printerIP){ alert("Configure l'adresse IP dans Paramètres → Imprimante."); return; }
+  if(!appConfig.printerIP){ alert("Configure l'adresse IP du PC serveur dans Paramètres → Imprimante."); return; }
   const zpl = generateZPL(row, qty, employee, prepDate, expiry, allergens);
+  setFbStatus(null, "Envoi vers l'imprimante…");
   try {
-    const res = await fetch("https://localhost:9101/write", {
+    const res = await fetch(`http://${appConfig.printerIP}:3000/print`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ device: { connection: "network", uid: appConfig.printerIP + ":9100" }, data: zpl })
+      body: JSON.stringify({ zpl })
     });
-    if(res.ok){ setFbStatus(true, "✓ Étiquette(s) envoyée(s) à l'imprimante"); }
-    else { alert("Erreur impression WiFi : " + res.status + ". Vérifie BrowserPrint."); }
+    if(res.ok){
+      setFbStatus(true, "✓ Étiquette(s) envoyée(s) à l'imprimante");
+    } else {
+      alert("Erreur impression : " + res.status + " — " + await res.text());
+    }
   } catch(e){
-    alert("Impossible de contacter BrowserPrint.\nVérifie qu'il est lancé sur ce poste.\n\n" + e.message);
+    alert("Impossible de contacter le serveur d'impression.\nVérifie que start.bat est lancé sur le PC.\n\n" + e.message);
   }
 }
 
