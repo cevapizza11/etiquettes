@@ -1700,38 +1700,45 @@ async function printViaWifi(row, qty, employee, prepDate, expiry, allergens){
 }
 
 function generateZPL(row, qty, employee, prepDate, expiry, allergens){
-  const prod = (row["Produit"] || "—").toUpperCase();
-  const flavor = row["Sous-produit / Saveur"] || "";
-  const temp = row["Température"] || "—";
+  // DK-1201 : 29mm x 90.3mm à 203dpi
+  // 29mm = 232 points | 90.3mm = 720 points
+  const prod    = (row["Produit"] || "—").substring(0, 18).toUpperCase();
+  const flavor  = (row["Sous-produit / Saveur"] || "").substring(0, 22);
+  const temp    = (row["Température"] || "—").substring(0, 20);
   const prepStr = prepDate.toLocaleString("fr-FR");
+  const allerg  = (allergens || "").substring(0, 40);
+  const emp     = (employee || "").substring(0, 20);
+
   let zpl = "";
   for(let i = 0; i < qty; i++){
-    zpl += `
-^XA
-^PW342
-^LL1070
-^CF0,22
-^FO10,10^FDLa Marmite Bleue - HACCP^FS
-^FO10,36^GB322,2,2^FS
-^CF0,38
-^FO10,44^FD${prod}^FS
-${flavor ? `^CF0,26\n^FO10,90^FD${flavor}^FS` : ""}
-^FO10,125^GB322,1,1^FS
-^CF0,20
-^FO10,132^FDPrepare le:^FS
-^CF0,24
-^FO10,156^FD${prepStr}^FS
-^FO10,188^GB322,2,2^FS
-^CF0,20
-^FO10,196^FDA utiliser avant:^FS
-^CF0,30
-^FO10,222^FD${expiry}^FS
-^FO10,262^GB322,2,2^FS
-^CF0,22
-^FO10,270^FDTemp: ${temp}^FS
-${allergens ? `^CF0,20\n^FO10,298^FDAllergenes: ${allergens}^FS` : ""}
-${employee ? `^FO10,328^GB322,1,1^FS\n^CF0,20\n^FO10,336^FDPar: ${employee}^FS` : ""}
-^XZ`;
+    zpl += `^XA
+^PON
+^PW232
+^LL720
+^LH0,0
+
+^FO8,10^A0N,18,18^FDLa Marmite Bleue^FS
+^FO8,30^A0N,14,14^FDHACCP^FS
+^FO8,48^GB216,2,2^FS
+
+^FO8,56^A0N,26,26^FD${prod}^FS
+${flavor ? `^FO8,88^A0N,20,20^FD${flavor}^FS` : ""}
+
+^FO8,118^GB216,1,1^FS
+^FO8,124^A0N,16,16^FDPrepare le:^FS
+^FO8,142^A0N,18,18^FD${prepStr}^FS
+
+^FO8,168^GB216,3,3^FS
+^FO8,174^A0N,16,16^FDA utiliser avant:^FS
+^FO8,194^A0N,24,24^FD${expiry}^FS
+^FO8,224^GB216,3,3^FS
+
+^FO8,232^A0N,16,16^FDTemp: ${temp}^FS
+${allerg ? `^FO8,254^GB216,1,1^FS\n^FO8,260^A0N,14,14^FDAllergenes:^FS\n^FO8,276^A0N,16,16^FD${allerg}^FS` : ""}
+${emp ? `^FO8,660^GB216,1,1^FS\n^FO8,668^A0N,16,16^FDPar: ${emp}^FS` : ""}
+
+^XZ
+`;
   }
   return zpl;
 }
