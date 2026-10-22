@@ -9,6 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <style>
 :root {
   --navy: #0d2136;
@@ -913,7 +914,7 @@ main {
     <div class="logo-icon">🐚</div>
     <div>
       <h1>La Marmite Bleue</h1>
-      <p>HACCP — Étiquettes DLC</p>
+      <p>HACCP — Étiquettes DLC · <span style="opacity:.7">v.22/10/2026 18:45</span></p>
     </div>
   </div>
   <div class="header-actions">
@@ -1675,9 +1676,58 @@ function updatePreview(row){
   `;
 }
 
+// ---------- SÉCURITÉ (22/10/2026) : appli réservée aux appareils activés ----------
+// Les règles Firestore n'autorisent que ce compte. À faire UNE fois par appareil.
+const EMAIL_ACTIVATION = "tmjumeaux@gmail.com";
+let etiquettesDemarrees = false;
+function ecranActivation(visible){
+  let el = document.getElementById("ecranActivation");
+  if(!el){
+    el = document.createElement("div");
+    el.id = "ecranActivation";
+    el.style.cssText = "position:fixed;inset:0;z-index:99999;background:#14233a;color:#fff;display:none;align-items:center;justify-content:center;padding:24px;font-family:system-ui,sans-serif";
+    el.innerHTML = `
+      <div style="width:100%;max-width:380px;text-align:center">
+        <div style="font-size:44px;margin-bottom:8px">🔒</div>
+        <div style="font-weight:800;font-size:22px">Activer cet appareil</div>
+        <div style="font-size:13px;color:#cfd8e3;margin:10px 0 18px;line-height:1.5">Étiquettes DLC<br>Pour protéger le catalogue, seuls les appareils activés par le gérant peuvent ouvrir l'appli. À faire une seule fois.</div>
+        <input id="activationPwd" type="password" autocomplete="current-password" placeholder="Mot de passe du compte gérant" style="width:100%;box-sizing:border-box;padding:14px;border-radius:12px;border:1px solid #c98a4b;background:#0d1828;color:#fff;font-size:16px">
+        <button id="activationBtn" style="width:100%;margin-top:12px;padding:14px;border:none;border-radius:12px;background:#c98a4b;color:#fff;font-weight:700;font-size:16px;cursor:pointer">🔓 Activer</button>
+        <div id="activationErr" style="color:#ff8a80;font-size:13px;min-height:18px;margin-top:10px"></div>
+        <button id="activationOubli" type="button" style="background:none;border:none;color:#cfd8e3;text-decoration:underline;font-size:13px;cursor:pointer">Mot de passe oublié ?</button>
+        <div style="font-size:11px;color:#8a97a8;margin-top:14px">v.22/10/2026 18:45</div>
+      </div>`;
+    document.body.appendChild(el);
+    const err = () => document.getElementById("activationErr");
+    const activer = async () => {
+      const pwd = document.getElementById("activationPwd").value;
+      err().style.color = "#ff8a80"; err().textContent = "";
+      if(!pwd){ err().textContent = "Entrez le mot de passe"; return; }
+      try{ await firebase.auth().signInWithEmailAndPassword(EMAIL_ACTIVATION, pwd); document.getElementById("activationPwd").value = ""; }
+      catch(e){
+        console.error(e);
+        err().textContent = e.code === "auth/too-many-requests" ? "Trop d'essais — réessayez dans quelques minutes"
+          : e.code === "auth/network-request-failed" ? "Pas de connexion internet" : "❌ Mot de passe incorrect";
+      }
+    };
+    document.getElementById("activationBtn").addEventListener("click", activer);
+    document.getElementById("activationPwd").addEventListener("keydown", e => { if(e.key === "Enter") activer(); });
+    document.getElementById("activationOubli").addEventListener("click", async () => {
+      try{ await firebase.auth().sendPasswordResetEmail(EMAIL_ACTIVATION); err().style.color = "#8fd19e"; err().textContent = "📧 E-mail de réinitialisation envoyé au gérant"; }
+      catch(e){ err().style.color = "#ff8a80"; err().textContent = "Envoi impossible — réessayez plus tard"; }
+    });
+  }
+  el.style.display = visible ? "flex" : "none";
+}
+
 document.addEventListener("DOMContentLoaded", () => {
-  loadFromFirestore();
-  loadConfig();
+  if(firebaseReady){
+    firebase.auth().onAuthStateChanged(user => {
+      const ok = !!(user && !user.isAnonymous && user.email === EMAIL_ACTIVATION);
+      ecranActivation(!ok);
+      if(ok && !etiquettesDemarrees){ etiquettesDemarrees = true; loadFromFirestore(); loadConfig(); }
+    });
+  } else { loadFromFirestore(); loadConfig(); }
   document.getElementById("modalEmployee").addEventListener("change", () => {
     if(currentIndex !== null) updatePreview(filteredData[currentIndex]);
   });
